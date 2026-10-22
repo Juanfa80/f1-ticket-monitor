@@ -30,7 +30,7 @@ def select_option(page, combo_index: int, pattern: str) -> str:
 
 def check_ticket() -> tuple[float, str, str | None]:
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, channel="chromium")
+        browser = p.chromium.launch(headless=False, channel="chrome")
         page = browser.new_page(locale="pt-BR", timezone_id="America/Sao_Paulo")
         try:
             response = page.goto(URL, wait_until="domcontentloaded", timeout=60_000)
