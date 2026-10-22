@@ -28,10 +28,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install dependencies and Chromium
+      - name: Install Python dependencies and verify Chrome
         run: |
           python -m pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+          google-chrome --version
+          command -v xvfb-run
       - name: Check ticket and send alerts
         env:
           TEST_TELEGRAM: ${{ inputs.test_telegram }}
