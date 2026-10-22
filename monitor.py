@@ -30,10 +30,11 @@ def select_option(page, combo_index: int, pattern: str) -> str:
 
 def check_ticket() -> tuple[float, str, str | None]:
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=False, channel="chromium")
         page = browser.new_page(locale="pt-BR", timezone_id="America/Sao_Paulo")
         try:
-            page.goto(URL, wait_until="domcontentloaded", timeout=60_000)
+            response = page.goto(URL, wait_until="domcontentloaded", timeout=60_000)
+            print("HTTP_STATUS:", response.status if response else None)
             combos = page.locator('input[role="combobox"]:not([type="search"])')
             combos.nth(0).wait_for(state="visible", timeout=60_000)
             combos.nth(0).click()
