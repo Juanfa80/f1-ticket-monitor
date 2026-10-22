@@ -39,7 +39,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python monitor.py
+        run: xvfb-run -a python monitor.py
       - name: Save alert deduplication state
         if: always()
         run: |
