@@ -16,7 +16,7 @@ STATE_FILE = Path("state/last_alert.json")
 
 
 def brl_value(text: str) -> int | None:
-    match = re.search(r"R$s*([d.]+)(?:,(d{2}))?", text, re.IGNORECASE)
+    match = re.search(r"R\$\s*([\d.]+)(?:,(\d{2}))?", text, re.IGNORECASE)
     return int(match.group(1).replace(".", "")) if match else None
 
 
@@ -37,11 +37,11 @@ def check_ticket() -> tuple[int, str, str | None]:
             page = browser.new_page(locale="pt-BR", timezone_id="America/Sao_Paulo")
             page.goto(URL, wait_until="domcontentloaded", timeout=60_000)
             page.get_by_role("combobox").first.wait_for(state="visible", timeout=45_000)
-            sector = select_option(page, 0, r"SETORs*A")
+            sector = select_option(page, 0, r"SETOR\s*A")
             page.get_by_role("combobox").nth(1).wait_for(state="visible", timeout=15_000)
             category = select_option(page, 1, r"Inteira")
             page.wait_for_timeout(1200)
-            if not re.search(r"SETORs*A", sector, re.IGNORECASE) or not re.search(r"Inteira", category, re.IGNORECASE):
+            if not re.search(r"SETOR\s*A", sector, re.IGNORECASE) or not re.search(r"Inteira", category, re.IGNORECASE):
                 raise RuntimeError("La página no confirmó SETOR A e Inteira después de seleccionarlos.")
             buttons = page.locator("button, [role='button']")
             purchase_text = None
@@ -61,9 +61,7 @@ def check_ticket() -> tuple[int, str, str | None]:
             price = brl_value(purchase_text)
             if price is None:
                 raise RuntimeError("El precio visible no tiene un formato BRL reconocible.")
-            fee_match = re.search(r"(?:taxa|comiss[aã]o|service fee)[^
-
-]{0,80}(R$s*[d.]+(?:,d{2})?)", purchase_text, re.IGNORECASE)
+            fee_match = re.search(r"(?:taxa|comiss[aã]o|service fee)[^\n\r]{0,80}(R\$\s*[\d.]+(?:,\d{2})?)", purchase_text, re.IGNORECASE)
             return price, purchase_text, fee_match.group(1) if fee_match else None
         finally:
             browser.close()
@@ -78,16 +76,14 @@ def read_state() -> dict:
 
 def save_state(state: dict) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "
-", encoding="utf-8")
+    STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def alert_text(price: int, fee: str | None) -> str:
     local_time = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y %H:%M BRT")
     fee_text = f" Comisiones visibles: {fee}." if fee else " Comisiones no visibles en esta pantalla."
     formatted_price = f"{price:,}".replace(",", ".")
-    return "F1 São Paulo 2026: SETOR A, Inteira disponible por R$" + formatted_price + " (precio base)." + fee_text + " Hora: " + local_time + ". Verifica el total antes de pagar.
-" + URL
+    return "F1 São Paulo 2026: SETOR A, Inteira disponible por R$" + formatted_price + " (precio base)." + fee_text + " Hora: " + local_time + ". Verifica el total antes de pagar.\n" + URL
 
 
 def send_telegram(message: str) -> None:
