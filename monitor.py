@@ -1,10 +1,8 @@
 import json
 import os
 import re
-import smtplib
 import sys
 from datetime import datetime
-from email.message import EmailMessage
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -96,17 +94,11 @@ def send_telegram(message: str) -> None:
         raise RuntimeError("Telegram rechazó el envío.")
 
 
-def send_gmail(subject: str, message: str) -> None:
-    host = os.environ["GMAIL_USER"]
-    email = EmailMessage()
-    email["From"], email["To"], email["Subject"] = host, os.environ.get("ALERT_EMAIL", host), subject
-    email.set_content(message)
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as smtp:
-        smtp.login(host, os.environ["GMAIL_APP_PASSWORD"])
-        smtp.send_message(email)
-
-
 def main() -> int:
+    if os.environ.get("TEST_TELEGRAM") == "true":
+        send_telegram("Prueba desde GitHub Actions: el envío de Telegram funciona en la nube. Este mensaje es una prueba, no una oferta de entradas.")
+        print("Prueba Telegram enviada desde GitHub Actions.")
+        return 0
     if datetime.now(ZoneInfo("America/Sao_Paulo")).date() > datetime(2026, 11, 6).date():
         print("Seguimiento finalizado: fecha límite alcanzada.")
         return 0
@@ -127,7 +119,7 @@ def main() -> int:
     offer_key = f"setor-a-inteira:{price}"
     same_offer = state.get("last_alert_key") == offer_key
     sent = set(state.get("sent", [])) if same_offer else set()
-    if same_offer and sent == {"telegram", "gmail"}:
+    if same_offer and sent == {"telegram"}:
         print("Oferta ya notificada; no se repite.")
         return 0
     old_price = state.get("last_alert_price")
@@ -139,7 +131,6 @@ def main() -> int:
     failures = []
     channels = [
         ("telegram", bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID")), lambda: send_telegram(message)),
-        ("gmail", bool(os.environ.get("GMAIL_USER") and os.environ.get("GMAIL_APP_PASSWORD")), lambda: send_gmail("F1: entrada Inteira sector A a R$1.900 o menos", message)),
     ]
     for name, ready, send in channels:
         if name in sent:
