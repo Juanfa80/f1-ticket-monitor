@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      test_telegram:
+        description: Send a Telegram test without checking ticket prices
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -15,7 +20,7 @@ concurrency:
 jobs:
   check-price:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Get monitor files
         uses: actions/checkout@v4
@@ -29,11 +34,9 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Check ticket and send alerts
         env:
+          TEST_TELEGRAM: ${{ inputs.test_telegram }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python monitor.py
