@@ -28,39 +28,38 @@ def select_option(page, combo_index: int, pattern: str) -> str:
     return combo.inner_text().strip()
 
 
-def check_ticket() -> tuple[int, str, str | None]:
+def check_ticket() -> tuple[float, str, str | None]:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        page = browser.new_page(locale="pt-BR", timezone_id="America/Sao_Paulo")
         try:
-            page = browser.new_page(locale="pt-BR", timezone_id="America/Sao_Paulo")
             page.goto(URL, wait_until="domcontentloaded", timeout=60_000)
-            page.get_by_role("combobox").first.wait_for(state="visible", timeout=45_000)
-            sector = select_option(page, 0, r"SETOR\s*A")
-            page.get_by_role("combobox").nth(1).wait_for(state="visible", timeout=15_000)
-            category = select_option(page, 1, r"Inteira")
-            page.wait_for_timeout(1200)
-            if not re.search(r"SETOR\s*A", sector, re.IGNORECASE) or not re.search(r"Inteira", category, re.IGNORECASE):
-                raise RuntimeError("La página no confirmó SETOR A e Inteira después de seleccionarlos.")
-            buttons = page.locator("button, [role='button']")
-            purchase_text = None
-            for i in range(buttons.count()):
-                button = buttons.nth(i)
-                label = button.inner_text().strip()
-                if re.search(r"comprar", label, re.IGNORECASE) and brl_value(label) is not None:
-                    purchase_text = label
-                    break
-                if re.search(r"comprar", label, re.IGNORECASE):
-                    parent_text = button.evaluate("el => el.parentElement?.innerText || ''")
-                    if brl_value(parent_text):
-                        purchase_text = parent_text
-                        break
-            if not purchase_text:
-                raise RuntimeError("No pude leer con certeza el precio del botón de compra.")
-            price = brl_value(purchase_text)
-            if price is None:
-                raise RuntimeError("El precio visible no tiene un formato BRL reconocible.")
-            fee_match = re.search(r"(?:taxa|comiss[aã]o|service fee)[^\n\r]{0,80}(R\$\s*[\d.]+(?:,\d{2})?)", purchase_text, re.IGNORECASE)
-            return price, purchase_text, fee_match.group(1) if fee_match else None
+            combos = page.locator('input[role="combobox"]:not([type="search"])')
+            combos.nth(0).wait_for(state="visible", timeout=60_000)
+            combos.nth(0).click()
+            page.get_by_role("list").get_by_role("button", name=re.compile(r"^SETOR\s+A\b", re.I)).click()
+            if combos.nth(0).input_value().strip().upper() != "SETOR A":
+                raise RuntimeError("Sector A no confirmado")
+            combos.nth(1).click()
+            page.get_by_role("list").get_by_role("button", name=re.compile(r"^Inteira\b", re.I)).click()
+            if combos.nth(1).input_value().strip().lower() != "inteira":
+                raise RuntimeError("Inteira no confirmada")
+            buy = page.get_by_role("button", name=re.compile(r"comprar", re.I))
+            buy.wait_for(state="visible", timeout=20_000)
+            if not buy.is_enabled():
+                raise RuntimeError("Entrada seleccionada no disponible")
+            text = buy.inner_text().strip()
+            match = re.search(r"(?:R\$\s*)?([0-9.]+(?:,[0-9]{2})?)\s*(?:BRL|R\$)?", text)
+            if not match:
+                raise RuntimeError("Precio no identificable: " + text)
+            price = float(match.group(1).replace(".", "").replace(",", "."))
+            if price <= 0:
+                raise RuntimeError("Precio inválido")
+            return price, text, None
+        except Exception:
+            print("PAGE_TITLE:", page.title())
+            print("PAGE_TEXT:", page.locator("body").inner_text()[:6000])
+            raise
         finally:
             browser.close()
 
