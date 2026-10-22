@@ -38,11 +38,11 @@ def check_ticket() -> tuple[float, str, str | None]:
             combos = page.locator('input[role="combobox"]:not([type="search"])')
             combos.nth(0).wait_for(state="visible", timeout=60_000)
             combos.nth(0).click()
-            page.get_by_role("list").get_by_role("button", name=re.compile(r"^SETOR\s+A\b", re.I)).click()
+            page.get_by_role("button", name=re.compile(r"^SETOR\s+A\b", re.I)).click()
             if combos.nth(0).input_value().strip().upper() != "SETOR A":
                 raise RuntimeError("Sector A no confirmado")
             combos.nth(1).click()
-            page.get_by_role("list").get_by_role("button", name=re.compile(r"^Inteira\b", re.I)).click()
+            page.get_by_role("button", name=re.compile(r"^Inteira\b", re.I)).click()
             if combos.nth(1).input_value().strip().lower() != "inteira":
                 raise RuntimeError("Inteira no confirmada")
             buy = page.get_by_role("button", name=re.compile(r"comprar", re.I))
